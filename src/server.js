@@ -1,6 +1,7 @@
 import express from "express";
 import { ApolloServer, gql } from "apollo-server-express";
 import mongoose from "mongoose";
+import db from "./models";
 
 mongoose
   .connect(process.env.MONGO_HOST)
@@ -15,8 +16,16 @@ const typeDefs = gql`
     users: [User!]!
   }
 
+  type Mutation {
+    createUser(data: CreateUserInput!): User!
+  }
+
   type User {
     _id: ID!
+    name: String!
+  }
+
+  input CreateUserInput {
     name: String!
   }
 `;
@@ -24,11 +33,20 @@ const typeDefs = gql`
 const resolvers = {
   Query: {
     hello: () => "Hello, Graphq Mongoose Sample",
-    users: () => [],
+    users: (parent, arg, { db }) => db.users.find(),
+  },
+  Mutation: {
+    createUser: (parent, { data }, { db }) => {
+      const { name } = data;
+      const user = new db.users({
+        name,
+      }).save();
+      return user;
+    },
   },
 };
 
-const server = new ApolloServer({ typeDefs, resolvers });
+const server = new ApolloServer({ typeDefs, resolvers, context: { db } });
 
 server.applyMiddleware({ app });
 
